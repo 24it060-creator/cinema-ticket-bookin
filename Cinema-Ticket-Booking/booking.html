@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Ticket Booking - Book Ticket</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>Cinema Booking</h2>
+        <div>
+            <a href="index.html">Movies</a>
+            <a href="booking.html" class="active">Book Ticket</a>
+            <a href="bookings.html">All Bookings</a>
+        </div>
+    </nav>
+
+    <div class="container form-container">
+        <h1>Book Your Ticket</h1>
+        
+        <div class="card">
+            <form id="booking-form" class="card-body">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" required placeholder="John Doe">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" required placeholder="1234567890">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="john@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="movie">Select Movie</label>
+                    <select id="movie" required>
+                        <option value="">Loading movies...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="showTime">Select Show Time</label>
+                    <select id="showTime" required disabled>
+                        <option value="">Select a movie first</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="seats">Number of Seats</label>
+                    <input type="number" id="seats" min="1" max="10" value="1" required>
+                </div>
+
+                <button type="submit" class="btn btn-full">Submit Booking</button>
+            </form>
+            <div id="status-message"></div>
+        </div>
+    </div>
+
+    <script>
+        let moviesData = [];
+
+        // Fetch movies for the dropdown
+        async function populateMovies() {
+            try {
+                const response = await fetch('/api/movies');
+                moviesData = await response.json();
+                
+                const movieSelect = document.getElementById('movie');
+                movieSelect.innerHTML = '<option value="">-- Choose a Movie --</option>';
+                
+                moviesData.forEach(movie => {
+                    const option = document.createElement('option');
+                    option.value = movie._id;
+                    option.textContent = `${movie.title} ($${movie.ticket_price})`;
+                    movieSelect.appendChild(option);
+                });
+
+                // Pre-select movie if passed in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const movieIdFromUrl = urlParams.get('movie');
+                if (movieIdFromUrl) {
+                    movieSelect.value = movieIdFromUrl;
+                    updateShowTimes(); // Trigger show time update
+                }
+
+            } catch (error) {
+                console.error('Error fetching movies:', error);
+                document.getElementById('movie').innerHTML = '<option value="">Failed to load movies</option>';
+            }
+        }
+
+        // Update show times based on selected movie
+        function updateShowTimes() {
+            const selectedMovieId = document.getElementById('movie').value;
+            const showTimeSelect = document.getElementById('showTime');
+            
+            if (!selectedMovieId) {
+                showTimeSelect.innerHTML = '<option value="">Select a movie first</option>';
+                showTimeSelect.disabled = true;
+                return;
+            }
+
+            const movie = moviesData.find(m => m._id === selectedMovieId);
+            showTimeSelect.innerHTML = '<option value="">-- Choose a Time --</option>';
+            
+            if (movie && movie.show_times) {
+                movie.show_times.forEach(time => {
+                    const option = document.createElement('option');
+                    option.value = time;
+                    option.textContent = time;
+                    showTimeSelect.appendChild(option);
+                });
+                showTimeSelect.disabled = false;
+            }
+        }
+
+        document.getElementById('movie').addEventListener('change', updateShowTimes);
+
+        // Submit Booking
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                movie_id: document.getElementById('movie').value,
+                show_time: document.getElementById('showTime').value,
+                seats: parseInt(document.getElementById('seats').value)
+            };
+
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.innerHTML = '<p class="info">Processing booking...</p>';
+
+            try {
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    statusMessage.innerHTML = '<p class="success">Booking successful! Redirecting...</p>';
+                    setTimeout(() => window.location.href = 'bookings.html', 1500);
+                } else {
+                    const err = await response.json();
+                    statusMessage.innerHTML = `<p class="error">Error: ${err.error}</p>`;
+                }
+            } catch (error) {
+                statusMessage.innerHTML = '<p class="error">Failed to submit booking.</p>';
+            }
+        });
+
+        populateMovies();
+    </script>
+</body>
+</html>

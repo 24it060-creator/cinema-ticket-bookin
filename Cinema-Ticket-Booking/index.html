@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Ticket Booking - Movies</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>Cinema Booking</h2>
+        <div>
+            <a href="index.html" class="active">Movies</a>
+            <a href="booking.html">Book Ticket</a>
+            <a href="bookings.html">All Bookings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Available Movies</h1>
+        <p class="subtitle">Select a movie below to book your tickets.</p>
+
+        <div id="movie-list" class="movie-grid">
+            <p>Loading movies...</p>
+        </div>
+    </div>
+
+    <script>
+        async function fetchMovies() {
+            try {
+                const response = await fetch('/api/movies');
+                const movies = await response.json();
+                
+                const movieList = document.getElementById('movie-list');
+                movieList.innerHTML = ''; // Clear loading text
+                
+                if (movies.length === 0) {
+                    movieList.innerHTML = '<p>No movies available right now.</p>';
+                    return;
+                }
+
+                movies.forEach(movie => {
+                    const showTimesHTML = movie.show_times.map(t => `<span class="badge">${t}</span>`).join(' ');
+                    
+                    const movieCard = `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>${movie.title}</h3>
+                                <span class="rating">⭐ ${movie.rating}</span>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Genre:</strong> ${movie.genre}</p>
+                                <p><strong>Duration:</strong> ${movie.duration} mins</p>
+                                <p><strong>Price:</strong> $${movie.ticket_price.toFixed(2)}</p>
+                                <div class="show-times">
+                                    <p><strong>Show Times:</strong></p>
+                                    <div class="badge-container">${showTimesHTML}</div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <a href="booking.html?movie=${movie._id}" class="btn">Book Now</a>
+                            </div>
+                        </div>
+                    `;
+                    movieList.innerHTML += movieCard;
+                });
+            } catch (error) {
+                console.error('Error fetching movies:', error);
+                document.getElementById('movie-list').innerHTML = '<p class="error">Failed to load movies. Please check if the server is running.</p>';
+            }
+        }
+
+        fetchMovies();
+    </script>
+</body>
+</html>

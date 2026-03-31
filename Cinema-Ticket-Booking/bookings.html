@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Ticket Booking - All Bookings</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <h2>Cinema Booking</h2>
+        <div>
+            <a href="index.html">Movies</a>
+            <a href="booking.html">Book Ticket</a>
+            <a href="bookings.html" class="active">All Bookings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Recent Bookings</h1>
+        <p class="subtitle">A list of all tickets booked across all movies.</p>
+        
+        <div class="table-container">
+            <table id="bookings-table">
+                <thead>
+                    <tr>
+                        <th>Booking Date</th>
+                        <th>Customer</th>
+                        <th>Phone</th>
+                        <th>Movie</th>
+                        <th>Showtime</th>
+                        <th>Seats</th>
+                        <th>Total Cost</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookings-body">
+                    <tr><td colspan="8">Loading bookings...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function fetchBookings() {
+            try {
+                const response = await fetch('/api/bookings');
+                const bookings = await response.json();
+                
+                const tableBody = document.getElementById('bookings-body');
+                tableBody.innerHTML = '';
+                
+                if (bookings.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8">No bookings found in the database.</td></tr>';
+                    return;
+                }
+
+                bookings.forEach(booking => {
+                    const dateObj = new Date(booking.booking_date);
+                    const formattedDate = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
+                    
+                    const movieTitle = booking.movie_id ? booking.movie_id.title : "Unknown Movie";
+                    const ticketPrice = booking.movie_id ? booking.movie_id.ticket_price : 0;
+                    const totalCost = (ticketPrice * booking.seats).toFixed(2);
+                    
+                    const customerName = booking.customer_id ? booking.customer_id.name : "Unknown Customer";
+                    const customerPhone = booking.customer_id ? booking.customer_id.phone : "-";
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${formattedDate}</td>
+                        <td><strong>${customerName}</strong></td>
+                        <td>${customerPhone}</td>
+                        <td><span class="badge movie-badge">${movieTitle}</span></td>
+                        <td>${booking.show_time}</td>
+                        <td>${booking.seats}</td>
+                        <td><strong>$${totalCost}</strong></td>
+                        <td><button class="btn btn-cancel" onclick="cancelBooking('${booking._id}')" style="background-color: #f44336; padding: 5px 10px; font-size: 0.9em; margin: 0;">Cancel</button></td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+                document.getElementById('bookings-body').innerHTML = '<tr><td colspan="8" class="error">Failed to load bookings. Check server.</td></tr>';
+            }
+        }
+
+        async function cancelBooking(bookingId) {
+            if (!confirm('Are you sure you want to cancel this booking?')) return;
+            
+            try {
+                const response = await fetch(`/api/bookings/${bookingId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Booking canceled successfully!');
+                    fetchBookings(); // Refresh the table
+                } else {
+                    const errorData = await response.json();
+                    alert('Error: ' + errorData.error);
+                }
+            } catch (error) {
+                console.error('Failed to cancel booking:', error);
+                alert('An error occurred while canceling the booking.');
+            }
+        }
+
+        fetchBookings();
+    </script>
+</body>
+</html>
